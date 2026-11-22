@@ -1,0 +1,11 @@
+# Set up my agent team
+
+Set up this Agent Setup Kit for me. Start in the kit folder I opened. Read `README.md`, `docs/start.md`, and `docs/memory.md`. Use the files in this kit to set up the team.
+
+1. Ask which tools I use if I have not told you. The choices are Claude Code, Codex, and Cursor. I can pick more than one. Use my home folder for the work files unless I give you a path.
+2. From the kit folder, run `python3 scripts/install.py --tools codex`, using my tool names in place of `codex`. Use `claude-code`, `codex`, or `cursor`. List each tool I picked after `--tools`. Add `--root` only if I give you a path. The script saves role prompts, handoff files, the COO inbox, one CEO outbox, and worker templates. Keep any work that is already there. Leave all add-ons off.
+3. If I ask for a dry test, skip this step. Else, use `docs/memory.md` to set up Notion. Ask for the page link only if it is missing. If the installed folder already has `memory.json`, read it and run the memory check with access I have set up. If setup is new and `NOTION_TOKEN` is already in your shell, run `python3 scripts/memory.py setup` with my page link. Then run `python3 scripts/memory.py check`. Use the installed copy of both commands, from the work folder. If the token is missing, ask me to run the setup or check command in my own terminal so I can enter the token at the hidden prompt. Never ask me to paste a token in chat. Use the full work folder path when giving me a command. Let me skip this step if I want to link Notion later.
+4. From the kit folder, run `python3 scripts/install.py --check` with the same `--root` if used. Check that `prompts/CEO.md`, `prompts/COO.md`, and `prompts/WORKER.md` in the work folder each say how to start and where to report. Check that the CEO, COO, and worker handoff template each have Goal, State, Next, and Log.
+5. Tell me where the work folder is and whether the local files and Notion passed their checks. If Notion was skipped, say so. Give me the first message for the CEO chat and the COO chat from `docs/start.md`, using the full work folder path.
+
+For a dry test, use a new home folder if one is provided. Do the same local install and checks. Make no network calls and use no tokens.
