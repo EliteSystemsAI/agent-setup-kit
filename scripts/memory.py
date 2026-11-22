@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import unquote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 from uuid import UUID
 
@@ -132,14 +132,16 @@ def views(request, database_id):
 
 def check_memory(request, config, saved_views=None):
     source_id = config["data_source_id"]
-    state_id = check_schema(request, source_id)
+    state_id = unquote(check_schema(request, source_id))
     if saved_views is None:
         saved_views = views(request, config["database_id"])
     for name, state in VIEWS.items():
         view_filter = saved_views.get(name, {}).get("filter") or {}
         clauses = view_filter.get("and", [view_filter])
-        if not (len(clauses) == 1 and clauses[0].get("property") in ("State", state_id)
-                and clauses[0].get("select") == {"equals": state}):
+        clause = clauses[0] if len(clauses) == 1 else {}
+        # Notion can return the property ID unescaped in a saved filter.
+        property_name = unquote(clause.get("property", ""))
+        if property_name not in ("State", state_id) or clause.get("select") != {"equals": state}:
             raise ValueError(f"Check the {name} view's State filter in Notion. See docs/memory.md.")
     request(f"data_sources/{source_id}/query", {"filter": state_filter("Active"), "page_size": 1})
     print(f"Notion check passed: {config['url']}")

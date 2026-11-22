@@ -5,7 +5,7 @@ Keep facts the team will need again. One row holds one fact. The Inbox holds new
 ## Set it up
 
 1. Make a blank Notion page called Team Memory. Keep it private or share it with your team. Set up the database once and use it for all your chats.
-2. If you own the workspace, open the [Notion Developer portal](https://app.notion.com/my-integrations). Click **New integration**. Pick your workspace and **Internal**. Name it Agent Memory.
+2. Open the [Notion Developer portal](https://www.notion.so/my-integrations). Click **New integration**. Pick your workspace and **Internal**. Name it Agent Memory. If you don't own the workspace, ask its owner to set up the connection and give your team access.
 3. Find **Capabilities** in the connection settings. Turn on **Read content**, **Insert content**, and **Update content** for setup. In **Configuration**, copy the API token. Keep it in a place for secrets.
 4. Open Team Memory. Click **•••**, then **Add connections**. Pick Agent Memory and confirm. Copy the Team Memory page link.
 5. In your own terminal, go to the work folder. Run the setup command. Replace `PAGE_LINK` with the link you copied. Enter the token when the script asks. It hides what you type.
@@ -45,7 +45,7 @@ Agents with terminal access need `NOTION_TOKEN` set in their own shell by your s
 
 ## Propose, review, read
 
-1. **Propose.** Check for an old copy first. If the fact is new, add a row with State set to Proposed. Add a source. Leave out keys, passwords, and private facts the team should not see. An agent can run this command from the work folder.
+1. **Propose.** Check the **Inbox** and **Active facts** views for the same fact. Ask the reviewer to check the Inbox if you can't open it. If the fact is new, add a row with State set to Proposed. Add a source. Leave out keys, passwords, and private facts the team should not see. An agent can run this command from the work folder.
 
    ```sh
    python3 scripts/memory.py propose <<'JSON'
