@@ -39,12 +39,18 @@ def page_id(value):
         return str(UUID(match[0]))
 
 
-def notion_client():
+def get_token():
     token = os.environ.get("NOTION_TOKEN")
     if not token and sys.stdin.isatty():
         token = getpass.getpass("Notion token (hidden): ")
     if not token:
         raise ValueError("Set NOTION_TOKEN in this shell or use the hidden prompt in your terminal.")
+    return token
+
+
+def notion_client(token=None):
+    if token is None:
+        token = get_token()
 
     def request(path, body=None, params=None):
         url = f"https://api.notion.com/v1/{path}"
@@ -185,9 +191,22 @@ def setup_memory(root, parent_link):
     check_memory(request, config, saved_views)
 
 
-def context(request, source_id):
+def require_memory(config, token):
+    source_id = config["data_source_id"]
+    notion_client(token)(f"data_sources/{source_id}/query", {
+        "filter": state_filter("Active"), "page_size": 1,
+    })
+
+
+def context(request, source_id, query=None):
+    filters = state_filter("Active")
+    if query:
+        filters = {"and": [filters, {"or": [
+            {"property": "Name", "title": {"contains": query}},
+            {"property": "Fact", "rich_text": {"contains": query}},
+        ]}]}
     rows = collect(request, f"data_sources/{source_id}/query", {
-        "filter": state_filter("Active"),
+        "filter": filters,
         "sorts": NEWEST,
     })
     facts = []
@@ -209,13 +228,23 @@ def propose(request, source_id):
         value = fact.get(key) if isinstance(fact, dict) else None
         if not isinstance(value, str) or not 1 <= len(value.strip()) <= 2000:
             raise ValueError(f"Give {key} as text of 1 to 2,000 characters.")
-        values[key] = rich_text(value.strip())
+        values[key] = value.strip()
+    existing = request(f"data_sources/{source_id}/query", {
+        "filter": {"and": [
+            {"property": "Fact", "rich_text": {"equals": values["fact"]}},
+            {"or": [state_filter("Proposed"), state_filter("Active")]},
+        ]},
+        "page_size": 1,
+    })
+    if existing["results"]:
+        print("This fact is already in Team Memory.")
+        return
     row = request("pages", {
         "parent": {"type": "data_source_id", "data_source_id": source_id},
         "properties": {
-            "Name": {"title": values["name"]},
-            "Fact": {"rich_text": values["fact"]},
-            "Source": {"rich_text": values["source"]},
+            "Name": {"title": rich_text(values["name"])},
+            "Fact": {"rich_text": rich_text(values["fact"])},
+            "Source": {"rich_text": rich_text(values["source"])},
             "State": {"select": {"name": "Proposed"}},
         },
     })
@@ -228,6 +257,7 @@ def main():
     commands.add_parser("setup").add_argument("page")
     commands.add_parser("check")
     commands.add_parser("context")
+    commands.add_parser("search").add_argument("query")
     commands.add_parser("propose")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
@@ -243,6 +273,8 @@ def main():
         check_memory(request, config)
     elif args.command == "context":
         context(request, source_id)
+    elif args.command == "search":
+        context(request, source_id, args.query)
     elif args.command == "propose":
         propose(request, source_id)
 

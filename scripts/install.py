@@ -2,6 +2,7 @@
 """Put the kit in a private work folder."""
 
 import argparse
+import hashlib
 import os
 import sys
 import tempfile
@@ -13,17 +14,30 @@ STARTERS = {
     "claude-code": ("Claude Code", "Open a terminal in the work folder and run `claude`."),
     "codex": ("Codex", "Open a terminal in the work folder and run `codex`."),
     "cursor": ("Cursor", "Open the work folder in Cursor and start a new Agent chat."),
+    "hermes": ("Hermes", "Use the team launcher or set your Hermes job's working directory to this folder."),
 }
-COPIES = (
+MANAGED = (
     ("docs/start.md", "START.md"),
     ("docs/swap-accounts.md", "docs/swap-accounts.md"),
     ("docs/memory.md", "docs/memory.md"),
+    ("docs/herdr.md", "docs/herdr.md"),
+    ("docs/writing.md", "docs/writing.md"),
     ("docs/plugins/Hermes.md", "docs/plugins/Hermes.md"),
     ("docs/plugins/gbrain.md", "docs/plugins/gbrain.md"),
     ("docs/plugins/Linear.md", "docs/plugins/Linear.md"),
     ("prompts/CEO.md", "prompts/CEO.md"),
     ("prompts/COO.md", "prompts/COO.md"),
     ("prompts/WORKER.md", "prompts/WORKER.md"),
+    ("scripts/memory.py", "scripts/memory.py"),
+    ("scripts/team.py", "scripts/team.py"),
+)
+INSTRUCTIONS = (
+    ("templates/AGENTS.md", "AGENTS.md", ""),
+    ("templates/AGENTS.md", "CLAUDE.md", ""),
+    ("templates/AGENTS.md", ".cursor/rules/agent-setup.mdc",
+     "---\ndescription: Shared team memory and writing rules\nalwaysApply: true\n---\n\n"),
+)
+WORK_FILES = (
     ("templates/HANDOFF.md", "templates/HANDOFF.md"),
     ("templates/TASK.md", "templates/TASK.md"),
     ("templates/HANDOFF.md", "ceo/HANDOFF.md"),
@@ -31,7 +45,6 @@ COPIES = (
     ("templates/INBOX.md", "coo/INBOX.md"),
     ("templates/OUTBOX.md", "coo/OUTBOX.md"),
     ("templates/TRACKER.md", "coo/TRACKER.md"),
-    ("scripts/memory.py", "scripts/memory.py"),
 )
 
 
@@ -44,11 +57,55 @@ def write_once(path, content):
         pass
 
 
+def replace_file(path, content):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as file:
+        temporary = Path(file.name)
+        try:
+            file.write(content)
+            file.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def install_instructions(root, source, target, preamble):
+    path = root / target
+    opening = "<!-- agent-setup-kit:start -->"
+    closing = "<!-- agent-setup-kit:end -->"
+    block = f"{opening}\n{(KIT / source).read_text(encoding='utf-8').strip()}\n{closing}"
+    previous = path.read_text(encoding="utf-8") if path.exists() else ""
+    if opening in previous and closing in previous:
+        start = previous.index(opening)
+        end = previous.index(closing, start) + len(closing)
+        content = previous[:start] + block + previous[end:]
+    elif previous:
+        content = previous.rstrip() + "\n\n" + block + "\n"
+    else:
+        content = preamble + block + "\n"
+    if content != previous:
+        replace_file(path, content.encode("utf-8"))
+
+
 def install(root, tools):
     root.mkdir(parents=True, exist_ok=True)
     (root / "workers").mkdir(exist_ok=True)
-    for source, target in COPIES:
+    for source, target in WORK_FILES:
         write_once(root / target, (KIT / source).read_bytes())
+    for source, target in MANAGED:
+        path = root / target
+        content = (KIT / source).read_bytes()
+        if path.exists():
+            current = path.read_bytes()
+            if current == content:
+                continue
+            # Keep the previous copy of an upgraded guide, script or prompt.
+            digest = hashlib.sha256(current).hexdigest()[:12]
+            backup = root / ".kit-backup" / digest / target
+            write_once(backup, current)
+        replace_file(path, content)
+    for source, target, preamble in INSTRUCTIONS:
+        install_instructions(root, source, target, preamble)
 
     links = []
     for tool in tools:
@@ -59,22 +116,25 @@ def install(root, tools):
         links.append(f"- [{name}]({path})")
 
     settings = f"# My setup\n\nTools: {', '.join(tools)}\n\n"
-    settings += "\n".join(links) + "\n\nAll add-ons start off.\n"
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=root, delete=False) as file:
-        temporary = Path(file.name)
-        try:
-            file.write(settings)
-            file.close()
-            temporary.replace(root / "SETUP.md")
-        finally:
-            temporary.unlink(missing_ok=True)
+    settings += (
+        "\n".join(links)
+        + "\n\n[Set up Herdr](docs/herdr.md) · [Connect team memory](docs/memory.md)"
+        + " · [Writing rules](docs/writing.md)\n"
+    )
+    replace_file(root / "SETUP.md", settings.encode("utf-8"))
 
 
 def check(root):
-    for name in ("SETUP.md", *(target for _, target in COPIES)):
+    for name in (
+        "SETUP.md", *(target for _, target in MANAGED + WORK_FILES),
+        *(target for _, target, _ in INSTRUCTIONS),
+    ):
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:
             raise ValueError(f"Missing or empty: {path}")
+    for _, target, _ in INSTRUCTIONS:
+        if "<!-- agent-setup-kit:start -->" not in (root / target).read_text(encoding="utf-8"):
+            raise ValueError(f"Missing team rules: {root / target}. Run the installer again.")
     if not (root / "workers").is_dir():
         raise ValueError(f"Missing worker folder: {root / 'workers'}")
 

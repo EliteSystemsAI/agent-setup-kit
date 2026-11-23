@@ -4,24 +4,25 @@ Use three kinds of chat to run a project. The **CEO** talks to you. The **COO** 
 
 ## Set it up
 
-1. Open this kit folder in Claude Code, Codex, or Cursor. The agent needs to read files and run terminal commands. You need Python 3.9 or newer.
-2. Paste all of [INSTALL-PROMPT.md](INSTALL-PROMPT.md) into a fresh chat. It sets up a private work folder. For Notion, have a page link and a token you can enter in your own terminal.
-3. Open `SETUP.md` in the work folder. It links to a starter for each tool you picked. Follow [Start work](docs/start.md) once your chats are open. You can mix tools and accounts.
+1. Clone this kit. Open it in Codex, Claude Code, Cursor or Hermes with terminal access. Use Python 3.9 or newer.
+2. Paste [INSTALL-PROMPT.md](INSTALL-PROMPT.md) into a fresh chat. Use a staff-approved Notion Team Memory page. Enter credentials in your terminal or approved secret manager.
+3. Open `SETUP.md` in the private work folder. Set up the [Herdr layout](docs/herdr.md) and launch a CEO and COO. The COO adds one worker tab per job. Each command-line launcher checks the same Notion brain before starting the agent.
 
 You can also run this command from a terminal in the kit folder.
 
 ```sh
-python3 scripts/install.py --tools codex
+python3 scripts/install.py --tools codex claude-code hermes
 ```
 
-Use any of `claude-code`, `codex`, and `cursor`. List more than one after `--tools` if you mix tools. Add `--notion-page` and your Notion page link to set up memory in the same run. [Set up Notion](docs/memory.md) shows how to get the page link and token. The kit uses your home folder by default. Pass `--root` with a folder path to pick a different spot.
+Use any of `claude-code`, `codex`, `cursor` and `hermes`. Add `--notion-page` and the shared Notion parent page to connect memory in the same run. [Set up Notion](docs/memory.md) shows how to use the connection. The work folder defaults to `~/.agent-setup`. Pass `--root` for a separate team.
 
-Run the same command with a new list of tools to update `SETUP.md`. Keep your own notes in the handoffs.
+To upgrade, pull the latest kit and rerun the installer with your tools and the same work folder. It updates kit scripts, guides and role prompts, and keeps a copy of each replaced file under `.kit-backup/`. It preserves team handoffs, worker jobs and the existing Notion connection. It updates only the marked team rules in existing project instruction files.
 
 ## When you work
 
 - [Start work and send reports](docs/start.md)
 - [Swap tools or accounts](docs/swap-accounts.md)
 - [Use shared memory in Notion](docs/memory.md)
+- [Write Linear updates and documentation](docs/writing.md)
 
-Extra tools start off. Turn on only the ones you want. Each has its own guide in [docs/plugins](docs/plugins).
+Linear and gbrain connections are optional. Each has its own guide in [docs/plugins](docs/plugins).
